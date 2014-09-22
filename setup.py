@@ -4,13 +4,12 @@ except ImportError:
     from distutils.core import setup
 
 config = {
-    'description': 'My Project',
+    'description': 'Virtuback',
     'author': 'Vilhelm von Ehrenheim',
-    'url': 'URL to get it at.',
-    'download_url': 'Where to download it.',
+    'url': 'https://github.com/while/virtuback',
     'author_email': 'vonehrenheim@gmail.com',
     'version': '0.1.0',
-    'install_requires': ['nose'],
+    'install_requires': ['nose', 'Flask'],
     'packages': ['virtuback'],
     'scripts': [],
     'name': 'virtuback'
