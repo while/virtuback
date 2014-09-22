@@ -55,3 +55,6 @@ target/
 
 # Rope project dir
 .ropeproject/
+
+# vim tmp files
+*.sw*
