@@ -4,7 +4,6 @@ import re
 import copy
 from virtuback import app
 
-
 # Define a mock users db
 users = [
     {
@@ -48,24 +47,22 @@ def get_user(id):
 
     return jsonify({'user': user_copy}), 200
 
+
 # ------------------------------------------------------------------------------
 #  POST route to insert a new user
 # ------------------------------------------------------------------------------
 @app.route('/api/v1.0/users', methods=['POST'])
-def insert_user(id):
+def insert_user():
+    # Do we get valid JSON in the request?
     if not request.json:
-        abort(400)
+        abort_with_reason(jsonify({"message": "Problems parsing JSON"}), 400)
 
-    if 'name' not in request.json or request.json['name'] == '':
-        abort_with_reason('Invalid name', 400)
-
-    if ('email' not in request.json or
-        not re.match('^[^@\s]+@[^@\s]+\.[a-zA-Z]+$', request.json['email'])):
-        abort_with_reason('Invalid email', 400)
-
-    if 'password' not in request.json or len(request.json['password']) < 8:
-        abort_with_reason('Password too short! Must be >= 8 characters.', 400)
-
+    # Validate required input fields in JSON
+    errors = validate_fields(request.json)
+    if len(errors) > 0:
+        abort_with_reason(jsonify({'message': 'Validation Failed',
+                                   'errors': errors}), 422)
+    # Create new user from request
     new = {
         'id': len(users) + 1,
         'name': request.json['name'],
@@ -74,39 +71,42 @@ def insert_user(id):
     }
     users.append(new)
 
+    # Respond with an object copy without password field
     user_copy = copy.deepcopy(new)
     del user_copy['password']
 
     return jsonify({'user': user_copy}), 201
+
 
 # ------------------------------------------------------------------------------
 #  PUT route to update a user
 # ------------------------------------------------------------------------------
 @app.route('/api/v1.0/user/<int:id>', methods=['PUT'])
 def update_user(id):
+    # Do we get valid JSON?
+    if not request.json:
+        abort_with_reason(jsonify({"message": "Problems parsing JSON"}), 400)
+
+    # Validate requires fields in request
+    errors = validate_fields(request.json)
+    if len(errors) > 0:
+        abort_with_reason(jsonify({'message': 'Validation Failed',
+                                   'errors': errors}), 422)
+
+    # Does the user we want to update exist?
     search = filter(lambda d: d['id'] == id, users)
     try:
         user = next(search)
     except StopIteration:
+        # If not there return 404 not found
         abort(404)
 
-    has_changed = False
-    if 'name' in request.json and request.json['name'] != '':
-        user['name'] = request.json['name']
-        has_changed = True
+    # Update the fields
+    user['name'] = request.json['name']
+    user['email'] = request.json['email']
+    user['password'] = sha256(request.json['password'].encode('UTF-8')).hexdigest()
 
-    if ('email' in request.json and
-        re.match('^[^@\s]+@[^@\s]+\.[a-zA-Z]+$', request.json['email'])):
-        user['email'] = request.json['email']
-        has_changed = True
-
-    if 'password' in request.json and len(request.json['password']) >= 8:
-        user['password'] = sha256(request.json['password'].encode('UTF-8')).hexdigest()
-        has_changed = True
-
-    if not has_changed:
-        abort(400)
-
+    # Return JSON object without password
     user_copy = copy.deepcopy(user)
     del user_copy['password']
 
@@ -118,18 +118,75 @@ def update_user(id):
 # -------------------------------------------------------------------------------
 @app.route('/api/v1.0/user/<int:id>', methods=['DELETE'])
 def remove_user(id):
+    # Does the user we want to update exist?
+    search = filter(lambda d: d['id'] == id, users)
+    try:
+        user = next(search)
+    except StopIteration:
+        # If not there return 404 not found
+        abort(404)
+
+    # Remove the requested id. no fuzz
     del users[id - 1]
 
+    # Return empty 200 OK message
     return '', 200
+
+
+# -------------------------------------------------------------------------------
+#  Function for field validation
+# -------------------------------------------------------------------------------
+def validate_fields(data):
+    errors = []
+    if 'name' not in data:
+        errors.append({
+            'resource': 'User',
+            'field': 'name',
+            'code': 'missing_field'
+        })
+    elif data['name'] == '':
+        errors.append({
+            'resource': 'User',
+            'field': 'name',
+            'code': 'invalid'
+        })
+
+    if 'email' not in data:
+        errors.append({
+            'resource': 'User',
+            'field': 'email',
+            'code': 'missing_field'
+        })
+    elif not re.match('^[^@\s]+@[^@\s]+\.[a-zA-Z]+$', data['email']):
+        errors.append({
+            'resource': 'User',
+            'field': 'email',
+            'code': 'invalid'
+        })
+
+    if 'password' not in data:
+        errors.append({
+            'resource': 'User',
+            'field': 'password',
+            'code': 'missing_field'
+        })
+    elif len(data['password']) < 8:
+        errors.append({
+            'resource': 'User',
+            'field': 'password',
+            'code': 'invalid'
+        })
+
+    return errors
 
 
 # ------------------------------------------------------------------------------
 #  Send abort response with a reason
 # ------------------------------------------------------------------------------
-def abort_with_reason(reason, code):
-    response = make_response(jsonify({'error': reason}))
+def abort_with_reason(response, code):
+    response = make_response(response)
     response.status_code = code
-    response.headers = {"X-Status-Reason": reason}
+    #response.headers = {"X-Status-Reason": message}
     abort(response)
 
 
