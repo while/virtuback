@@ -46,7 +46,7 @@ def get_user(id):
 # ------------------------------------------------------------------------------
 #  POST route to insert a new user
 # ------------------------------------------------------------------------------
-@app.route('/api/v1.0/user/<int:id>', methods=['POST'])
+@app.route('/api/v1.0/users', methods=['POST'])
 def insert_user(id):
     if not request.json:
         abort(400)
