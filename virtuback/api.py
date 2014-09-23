@@ -1,6 +1,7 @@
 from flask import jsonify, abort, request, make_response
 from hashlib import sha256
 import re
+import copy
 from virtuback import app
 
 
@@ -38,10 +39,14 @@ def list_users():
 def get_user(id):
     search = filter(lambda d: d['id'] == id, users)
     try:
-        return jsonify({'user': next(search)})
+        user = next(search)
     except StopIteration:
         abort(404)
 
+    user_copy = copy.deepcopy(user)
+    del user_copy['password']
+
+    return jsonify({'user': user_copy}), 200
 
 # ------------------------------------------------------------------------------
 #  POST route to insert a new user
@@ -69,8 +74,10 @@ def insert_user(id):
     }
     users.append(new)
 
-    return jsonify({'user': new}), 201
+    user_copy = copy.deepcopy(new)
+    del user_copy['password']
 
+    return jsonify({'user': user_copy}), 201
 
 # ------------------------------------------------------------------------------
 #  PUT route to update a user
@@ -79,18 +86,41 @@ def insert_user(id):
 def update_user(id):
     search = filter(lambda d: d['id'] == id, users)
     try:
-        user = search.next()
+        user = next(search)
     except StopIteration:
         abort(404)
-    abort(501)
+
+    has_changed = False
+    if 'name' in request.json and request.json['name'] != '':
+        user['name'] = request.json['name']
+        has_changed = True
+
+    if ('email' in request.json and
+        re.match('^[^@\s]+@[^@\s]+\.[a-zA-Z]+$', request.json['email'])):
+        user['email'] = request.json['email']
+        has_changed = True
+
+    if 'password' in request.json and len(request.json['password']) >= 8:
+        user['password'] = sha256(request.json['password'].encode('UTF-8')).hexdigest()
+        has_changed = True
+
+    if not has_changed:
+        abort(400)
+
+    user_copy = copy.deepcopy(user)
+    del user_copy['password']
+
+    return jsonify({'user': user_copy}), 200
 
 
 # -------------------------------------------------------------------------------
-#  DELETE route to remove a user
+#  DELETE route to remove a user resource
 # -------------------------------------------------------------------------------
 @app.route('/api/v1.0/user/<int:id>', methods=['DELETE'])
 def remove_user(id):
-    abort(501)
+    del users[id - 1]
+
+    return '', 200
 
 
 # ------------------------------------------------------------------------------
