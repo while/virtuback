@@ -8,17 +8,17 @@ A simple backend serving an API for a user resource
 This is a simple project not really intended for priduction. Here is how you
 set it up for development.
 
-1. Get the code from github
+Get the code from github
 
     $ git clone git@github.com:while/virtuback.git
 
-2. Set up a virtual python environment
+Set up a virtual python environment
 
     $ cd virtuback
     $ virtualenv env
     $ source env/bin/activate
 
-3. Install required packages
+Install required packages
 
     $ pip install -r requirements.txt
 
