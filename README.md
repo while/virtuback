@@ -5,7 +5,7 @@ A simple backend serving an API for a user resource
 
 
 ## Installation
-This is a simple project not really intended for priduction. Here is how you
+This is a simple project not really intended for production. Here is how you
 set it up for development.
 
 Get the code from github
