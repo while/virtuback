@@ -2,12 +2,16 @@
 Database module for virtuback
 """
 from pymongo import MongoClient
+from virtuback import app
+import config
 
-MONGOURL = 'mongodb://virtusize:easysizing@37.139.5.104:27017/virtuback'
+_client = MongoClient(config.MONGOURL)
 
 
-def collection():
-    client = MongoClient(MONGOURL)
-    collection = client.virtuback.users
-    return collection
+def users():
+    """ Function for returning the users collection. """
+    if app.config['TESTING']:
+        print("USE TEST DB!")
+        return _client.virtuback_test.users
 
+    return _client.virtuback.users

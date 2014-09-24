@@ -5,22 +5,6 @@ import copy
 from virtuback import app
 from virtuback import db
 
-# Define a mock users db
-users = [
-    {
-        'id':        1,
-        'name':      u'Vilhelm von Ehrenheim',
-        'email':     u'vonehrenheim@gmail.com',
-        'password':  sha256(b'abc123').hexdigest()
-    },
-    {
-        'id':        2,
-        'name':      u'Tester Testsson',
-        'email':     u'test@test.com',
-        'password':  sha256(b'qwerty').hexdigest()
-    },
-]
-
 
 # ------------------------------------------------------------------------------
 #  Set up GET listing of all users !!UNSAFE?
@@ -29,7 +13,7 @@ users = [
 def list_users():
     """ Method for listing all users via GET request. """
     all = []
-    for u in db.collection().find():
+    for u in db.users().find():
         all.append({
             'id': int(u['_id']),
             'name': u['name'],
@@ -43,7 +27,7 @@ def list_users():
 # ------------------------------------------------------------------------------
 @app.route('/api/v1.0/user/<int:id>', methods=['GET'])
 def get_user(id):
-    user = db.collection().find_one({'_id': id})
+    user = db.users().find_one({'_id': id})
 
     if user is None:
         abort(404)
@@ -73,12 +57,12 @@ def insert_user():
                                    'errors': errors}), 422)
     # Create new user from request
     new = {
-        '_id': db.collection().find().count() + 1,
+        '_id': db.users().find().count() + 1,
         'name': request.json['name'],
         'email': request.json['email'],
         'password': sha256(request.json['password'].encode('UTF-8')).hexdigest()
     }
-    db.collection().insert(new)
+    db.users().insert(new)
 
     # Respond with a user object without password field
     return jsonify({
@@ -106,20 +90,24 @@ def update_user(id):
                                    'errors': errors}), 422)
 
     # Does the user we want to update exist?
-    user = db.collection().find_one({'_id': id})
+    user = db.users().find_one({'_id': id})
     if user is None:
         abort(404)
 
     # Update the fields
-    user['name'] = request.json['name']
-    user['email'] = request.json['email']
-    user['password'] = sha256(request.json['password'].encode('UTF-8')).hexdigest()
+    upd = {
+        'name': request.json['name'],
+        'email': request.json['email'],
+        'password': sha256(request.json['password'].encode('UTF-8')).hexdigest()
+    }
+
+    db.users().update({'_id': id}, upd)
 
     # Return JSON object without password
-    user_copy = copy.deepcopy(user)
-    del user_copy['password']
+    upd['id'] = id
+    del upd['password']
 
-    return jsonify({'user': user_copy}), 200
+    return jsonify({'user': upd}), 200
 
 
 # -------------------------------------------------------------------------------
@@ -127,16 +115,10 @@ def update_user(id):
 # -------------------------------------------------------------------------------
 @app.route('/api/v1.0/user/<int:id>', methods=['DELETE'])
 def remove_user(id):
+    ret = db.users().remove({'_id': id})
     # Does the user we want to update exist?
-    search = filter(lambda d: d['id'] == id, users)
-    try:
-        user = next(search)
-    except StopIteration:
-        # If not there return 404 not found
+    if ret['n'] == 0:
         abort(404)
-
-    # Remove the requested id. no fuzz
-    del users[id - 1]
 
     # Return empty 200 OK message
     return '', 200
