@@ -8,7 +8,7 @@ config = {
     'author': 'Vilhelm von Ehrenheim',
     'url': 'https://github.com/while/virtuback',
     'author_email': 'vonehrenheim@gmail.com',
-    'version': '0.2.1',
+    'version': '0.3.0',
     'install_requires': ['nose', 'Flask', 'pymongo'],
     'packages': ['virtuback'],
     'scripts': [],
