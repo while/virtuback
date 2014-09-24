@@ -1,16 +1,32 @@
 from nose.tools import *
 from virtuback import app
+from virtuback import db
 from flask import json
+from hashlib import sha256
 
 
-class TestAPIAdd:
+class TestPOST:
     def setUp(self):
         print('SETUP!')
         app.config['TESTING'] = True
         self.client = app.test_client()
+        self.db = db._client.virtuback_test.users
+        self.db.insert({
+            '_id':       1,
+            'name':     'Vilhelm von Ehrenheim',
+            'email':    'vonehrenheim@gmail.com',
+            'password': sha256(b'abc123').hexdigest()
+        })
+        self.db.insert({
+            '_id':       2,
+            'name':     'Tester Testsson',
+            'email':    'test@test.com',
+            'password': sha256(b'qwerty').hexdigest()
+        })
 
     def tearDown(self):
         print('TEAR DOWN!')
+        self.db.remove()
 
     def test_add_user_invalid_json(self):
         res = self.client.post('/api/v1.0/users', data="not json")
@@ -148,10 +164,7 @@ class TestAPIAdd:
             'email': 'user3@test.com'
         }
         # test that we have it in db now
-        res = self.client.get('/api/v1.0/user/3')
-        data = json.loads(res.data)['user']
+        data = self.db.find_one({'_id': 3})
 
-        assert data['id'] == 3
         assert data['name'] == u'User3'
         assert data['email'] == u'user3@test.com'
-
