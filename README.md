@@ -26,11 +26,14 @@ Now we are done! This app uses MongoDB for persistance. All you need to set up
 for this is the connection string in `config.py`. This is set to use a local
 mongodb install per default. 
 
-Once configured we can test and run the app
+Once configured we can test 
 
-    $ nosetests
+    $ nosetests --with-coverage --cover-package=virtuback
+
+and run the app
+
     $ python run.py
 
-Don't hesitate to ask me if you have any questions. 
+Don't hesitate to send me an email if you have any questions. 
 
 

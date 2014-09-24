@@ -38,6 +38,13 @@ class TestGET(SetupAPI):
         res = self.client.get('/api/v1.0/user/0')
         assert res.status == "404 NOT FOUND"
 
+    def test_get_users(self):
+        res = self.client.get('/api/v1.0/users')
+        data = json.loads(res.data)
+
+        assert len(data['users']) == 2
+        assert data['users'][0]['name'] == 'Vilhelm von Ehrenheim'
+
     def test_get_user_ok(self):
         res = self.client.get('/api/v1.0/user/1')
         print(res.data)

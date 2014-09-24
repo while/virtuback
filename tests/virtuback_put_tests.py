@@ -34,6 +34,17 @@ class TestPUT:
         assert res.status == '400 BAD REQUEST'
         assert data['message'] == 'Problems parsing JSON'
 
+    def test_update_user_not_found(self):
+        res = self.client.put('/api/v1.0/user/0', data="""{
+            "name": "User3",
+            "email": "user3@test.com",
+            "password": "thisisavalidpass"
+        }""", content_type='application/json')
+        data = json.loads(res.data)
+
+        assert res.status == '404 NOT FOUND'
+        assert data['message'] == 'Not Found'
+
     def test_update_user_missing_name(self):
         res = self.client.put('/api/v1.0/user/2', data="""{
             "email": "user3@test.com",
