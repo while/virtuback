@@ -3,6 +3,7 @@ from hashlib import sha256
 import re
 import copy
 from virtuback import app
+from virtuback import db
 
 # Define a mock users db
 users = [
@@ -27,7 +28,13 @@ users = [
 @app.route('/api/v1.0/users', methods=['GET'])
 def list_users():
     """ Method for listing all users via GET request. """
-    all = [{'id': d['id'], 'name': d['name'], 'email': d['email']} for d in users]
+    all = []
+    for u in db.collection().find():
+        all.append({
+            'id': int(u['_id']),
+            'name': u['name'],
+            'email': u['email'],
+        })
     return jsonify({'users': all})
 
 
@@ -36,16 +43,18 @@ def list_users():
 # ------------------------------------------------------------------------------
 @app.route('/api/v1.0/user/<int:id>', methods=['GET'])
 def get_user(id):
-    search = filter(lambda d: d['id'] == id, users)
-    try:
-        user = next(search)
-    except StopIteration:
+    user = db.collection().find_one({'_id': id})
+
+    if user is None:
         abort(404)
 
-    user_copy = copy.deepcopy(user)
-    del user_copy['password']
-
-    return jsonify({'user': user_copy}), 200
+    return jsonify({
+        'user': {
+            'id': int(user['_id']),
+            'name': user['name'],
+            'email': user['email'],
+        }
+    }), 200
 
 
 # ------------------------------------------------------------------------------
@@ -64,18 +73,21 @@ def insert_user():
                                    'errors': errors}), 422)
     # Create new user from request
     new = {
-        'id': len(users) + 1,
+        '_id': db.collection().find().count() + 1,
         'name': request.json['name'],
         'email': request.json['email'],
         'password': sha256(request.json['password'].encode('UTF-8')).hexdigest()
     }
-    users.append(new)
+    db.collection().insert(new)
 
-    # Respond with an object copy without password field
-    user_copy = copy.deepcopy(new)
-    del user_copy['password']
-
-    return jsonify({'user': user_copy}), 201
+    # Respond with a user object without password field
+    return jsonify({
+        'user': {
+            'id': int(new['_id']),
+            'name': new['name'],
+            'email': new['email'],
+        }
+    }), 201
 
 
 # ------------------------------------------------------------------------------
@@ -94,11 +106,8 @@ def update_user(id):
                                    'errors': errors}), 422)
 
     # Does the user we want to update exist?
-    search = filter(lambda d: d['id'] == id, users)
-    try:
-        user = next(search)
-    except StopIteration:
-        # If not there return 404 not found
+    user = db.collection().find_one({'_id': id})
+    if user is None:
         abort(404)
 
     # Update the fields
@@ -195,7 +204,7 @@ def abort_with_reason(response, code):
 # ------------------------------------------------------------------------------
 @app.errorhandler(404)
 def not_found(error):
-        return make_response(jsonify({'error': '404 NOT FOUND'}), 404)
+        return make_response(jsonify({'message': 'Not Found'}), 404)
 
 
 # ------------------------------------------------------------------------------
@@ -203,4 +212,4 @@ def not_found(error):
 # ------------------------------------------------------------------------------
 @app.errorhandler(501)
 def not_implemented(error):
-        return make_response(jsonify({'error': '501 NOT IMPLEMENTED'}), 501)
+        return make_response(jsonify({'message': 'Not Implemented'}), 501)
